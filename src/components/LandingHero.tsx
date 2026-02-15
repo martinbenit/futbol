@@ -2,6 +2,7 @@
 
 import { SignInButton } from "@clerk/nextjs";
 import { ArrowRight, Trophy, Users, ShieldCheck } from "lucide-react";
+import Image from "next/image";
 
 export default function LandingHero() {
     return (
@@ -17,9 +18,17 @@ export default function LandingHero() {
             ></div>
 
             <div className="relative z-10 max-w-4xl mx-auto py-12">
-                <header className="mb-8">
-                    <h1 className="text-clamp-title mb-4">PAN Y QUESO</h1>
-                    <p className="font-accent text-2xl text-[var(--grafico-red)] border-y-2 border-black py-2 tracking-tight">
+                <header className="mb-8 flex flex-col items-center">
+                    <div className="w-full max-w-4xl mb-4 relative h-64 md:h-96">
+                        <Image
+                            src="/isologo.png"
+                            alt="PAN Y QUESO"
+                            fill
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
+                    <p className="font-accent text-2xl text-[var(--grafico-cyan)] border-y-2 border-black py-2 tracking-tight">
                         LA INTELIGENCIA ARTIFICIAL QUE DEFINE EL HONOR EN EL POTRERO
                     </p>
                 </header>

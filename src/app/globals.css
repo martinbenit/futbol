@@ -31,7 +31,7 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-[var(--grafico-red)] text-white font-masthead px-8 py-3 border-2 border-[var(--ink-black)] uppercase text-lg flex items-center gap-2 transition-all duration-200 hover:bg-[var(--grafico-cyan)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_var(--ink-black)] active:translate-y-0 active:shadow-none;
+    @apply bg-[var(--grafico-cyan)] text-white font-masthead px-8 py-3 border-2 border-[var(--ink-black)] uppercase text-lg flex items-center gap-2 transition-all duration-200 hover:bg-[var(--grafico-gold)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_var(--ink-black)] active:translate-y-0 active:shadow-none;
     min-height: 48px;
   }
 

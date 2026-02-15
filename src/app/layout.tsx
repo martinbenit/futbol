@@ -62,7 +62,7 @@ export default function RootLayout({
               <div className="flex items-center gap-4">
                 <SignedOut>
                   <SignInButton mode="modal">
-                    <button className="bg-[var(--grafico-red)] px-4 py-1 font-masthead text-sm border border-white hover:bg-white hover:text-black transition-all">
+                    <button className="bg-[var(--grafico-cyan)] px-4 py-1 font-masthead text-sm border border-white hover:bg-white hover:text-black transition-all">
                       ENTRAR
                     </button>
                   </SignInButton>
