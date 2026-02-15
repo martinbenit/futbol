@@ -16,8 +16,8 @@ export const metadata: Metadata = {
   title: "PaniquesoApp - La Mística del Fútbol",
   description: "Organiza tus partidos con la esencia de El Gráfico",
   icons: {
-    icon: '/favicon.webp',
-    shortcut: '/favicon.webp',
+    icon: '/icon.png',
+    shortcut: '/icon.png',
     apple: '/icon.png',
   },
 };
