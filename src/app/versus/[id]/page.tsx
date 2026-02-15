@@ -7,8 +7,11 @@ import {
     ArrowLeft, Shield, Zap, Trophy, Star, Copy, CheckCircle2,
     Loader2, MessageSquare, Target, Calendar, MapPin, Clock,
     Award, Share2, ChevronDown, ChevronUp, Save,
-    Minus, Plus
+    Minus, Plus, Trash2
 } from 'lucide-react';
+import { useGroups } from '@/context/GroupContext';
+import { useRouter } from 'next/navigation';
+import { useUser } from '@clerk/nextjs';
 
 interface MatchData {
     id: string;
@@ -51,6 +54,9 @@ const JOURNALIST_QUOTES = [
 
 export default function VersusDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const router = useRouter();
+    const { user } = useUser();
+    const { activeGroup } = useGroups();
     const [match, setMatch] = useState<MatchData | null>(null);
     const [loading, setLoading] = useState(true);
     const [copySuccess, setCopySuccess] = useState(false);
@@ -137,6 +143,34 @@ export default function VersusDetail({ params }: { params: Promise<{ id: string 
         setSaving(false);
     };
 
+    const handleDeleteMatch = async () => {
+        if (!window.confirm('¿Estás seguro de que querés eliminar este partido PARA SIEMPRE?\n\nEsta acción borrará el historial y recalculará las estadísticas.\nNO SE PUEDE DESHACER.')) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await fetch('/api/delete-match', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    matchId: match.id,
+                    groupId: activeGroup?.id,
+                    clerkId: user?.id
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            router.push(match.status === 'completed' ? '/historial' : '/armar-partido');
+            router.refresh();
+        } catch (err: any) {
+            alert('Error al eliminar: ' + err.message);
+            setLoading(false);
+        }
+    };
+
     const addGoleador = (playerId: string) => {
         const existing = goleadores.find(g => g.playerId === playerId);
         if (existing) {
@@ -176,6 +210,15 @@ export default function VersusDetail({ params }: { params: Promise<{ id: string 
                     <div className="text-[10px] font-bold uppercase text-black/30 tracking-widest">CRÓNICA DEL VERSUS</div>
                     <h1 className="text-3xl md:text-5xl uppercase tracking-tighter font-masthead">{match.teamA_Name} vs {match.teamB_Name}</h1>
                 </div>
+                {activeGroup?.role === 'ADMIN' && (
+                    <button
+                        onClick={handleDeleteMatch}
+                        className="ml-auto p-3 bg-red-100 text-red-600 hover:bg-red-600 hover:text-white border-2 border-transparent hover:border-black transition-all rounded-full flex items-center justify-center group"
+                        title="Eliminar partido (Admin)"
+                    >
+                        <Trash2 size={20} />
+                    </button>
+                )}
             </div>
 
             {/* Match info bar */}
