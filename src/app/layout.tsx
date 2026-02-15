@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { ClerkProvider, SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import { esES } from '@clerk/localizations'
 import { Inter, Bebas_Neue, Anton } from 'next/font/google'
@@ -14,6 +15,11 @@ const anton = Anton({ weight: '400', subsets: ['latin'], variable: '--font-accen
 export const metadata: Metadata = {
   title: "PaniquesoApp - La Mística del Fútbol",
   description: "Organiza tus partidos con la esencia de El Gráfico",
+  icons: {
+    icon: '/favicon.webp',
+    shortcut: '/favicon.webp',
+    apple: '/icon.png',
+  },
 };
 
 export default function RootLayout({
@@ -30,8 +36,15 @@ export default function RootLayout({
 
             <nav className="bg-[var(--ink-black)] text-white py-4 px-3 md:px-6 flex justify-between items-center z-50 relative border-b border-white/10 overflow-hidden">
               <div className="flex items-center gap-2 md:gap-6 min-w-0">
-                <Link href="/" className="font-masthead text-lg md:text-2xl tracking-tighter hover:text-[var(--grafico-red)] transition-colors flex-shrink-0">
-                  PAN Y QUESO
+                <Link href="/" className="hover:opacity-80 transition-opacity flex-shrink-0">
+                  <Image
+                    src="/logo.webp"
+                    alt="PAN Y QUESO"
+                    width={180}
+                    height={40}
+                    className="h-8 md:h-10 w-auto object-contain"
+                    priority
+                  />
                 </Link>
 
                 <SignedIn>
