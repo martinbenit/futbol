@@ -3,53 +3,102 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
 }
 
 model Player {
+  id            String        @id @default(cuid())
+  clerkId       String?       @unique // Link to Clerk User for authentication
+  name          String
+  alias         String?
+  photoUrl      String?  // Player profile photo URL
+  scouting      Float         @default(0) // Average score 1-5 (legacy, kept for backward compat)
+  skills        String?       // JSON stringified skills
+  groupId       String
+  group         Group         @relation(fields: [groupId], references: [id])
+  matches       Participation[]
+  skillRatings  SkillRating[]
+  role          Role          @default(PLAYER)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  clerkId   String
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id])
+  role      Role     @default(PLAYER)
+  name      String   // Display name from Clerk
+  joinedAt  DateTime @default(now())
+
+  @@unique([clerkId, groupId])
+}
+
+model SkillRating {
   id          String   @id @default(cuid())
-  name        String
-  alias       String?
-  scouting    Float    @default(0) // Average score 1-5
-  skills      String?  // JSON stringified skills
-  group       Group    @relation(fields: [groupId], references: [id])
+  raterId     String   // clerkId of the person rating
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id])
+  skill       String   // "defense", "speed", "creativity", "attack", "goalkeeping", "sprint"
+  score       Float    // 1-5 (supports decimals for master averages)
   groupId     String
-  matches     Participation[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@unique([raterId, playerId, skill])
+}
+
+enum Role {
+  ADMIN
+  PLAYER
 }
 
 model Group {
   id          String   @id @default(cuid())
   name        String
+  inviteCode  String   @unique @default(uuid())
+  ownerId     String?  // Clerk ID of the creator
   players     Player[]
+  members     GroupMember[]
   matches     Match[]
   createdAt   DateTime @default(now())
 }
 
 model Match {
-  id          String   @id @default(cuid())
-  date        DateTime
-  location    String?
-  group       Group    @relation(fields: [groupId], references: [id])
-  groupId     String
-  teamA       String?  // JSON stringified team A
-  teamB       String?  // JSON stringified team B
-  scoreA      Int?
-  scoreB      Int?
-  motivation  String?  // AI generated motivation
-  coverUrl    String?  // AI generated cover
+  id             String   @id @default(cuid())
+  date           DateTime @default(now())
+  location       String?
+  groupId        String
+  group          Group    @relation(fields: [groupId], references: [id])
+  teamA_Name     String?
+  teamB_Name     String?
+  teamA_JSON     String?  // Final selection A (JSON array of player objects)
+  teamB_JSON     String?  // Final selection B
+  scoreA         Int?
+  scoreB         Int?
+  motivation     String?
+  justification  String?
+  status         String   @default("upcoming") // "upcoming" | "completed"
+  hora           String?  // Match time e.g. "21:00"
+  cancha         String?  // Field/venue name
+  pizarraA       String?  // Tactical analysis team A (Pizarra del Míster)
+  pizarraB       String?  // Tactical analysis team B
+  contributions  String?  // JSON { playerId: "description" }
+  chamigo        String?  // Player of the match (player ID)
+  goleadores     String?  // JSON [{ playerId, goals }]
+  awards         String?  // JSON { awardName: playerId }
   participations Participation[]
-  createdAt   DateTime @default(now())
+  createdAt      DateTime @default(now())
 }
 
 model Participation {
   id        String @id @default(cuid())
-  match     Match  @relation(fields: [matchId], references: [id])
   matchId   String
-  player    Player @relation(fields: [playerId], references: [id])
+  match     Match  @relation(fields: [matchId], references: [id])
   playerId  String
+  player    Player @relation(fields: [playerId], references: [id])
   team      String? // "A" or "B"
   isGuest   Boolean @default(false)
 }

@@ -1,89 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  --background: #FDFBF7;
-  --foreground: #1A1A1A;
-  --primary: #B22222;
-  --primary-foreground: #FFFFFF;
-  --muted: #E5E1D8;
-  --muted-foreground: #666159;
-  --accent: #D4AF37; /* Golden accent for "highlights" */
-  --border: #D1CEC5;
-  --vintage-paper: #F2EFE6;
+  /* Paleta Pan y Queso Revolution */
+  --grafico-red: #C41E3A;
+  --grafico-cyan: #0072BB;
+  --grafico-gold: #D4AF37;
+  --ink-black: #121212;
+  --aged-paper: #F4F1EA;
+
+  --font-masthead: 'Bebas Neue', cursiva;
+  --font-accent: 'Anton', sans-serif;
+  --font-sans: 'Inter', sans-serif;
 }
 
-@font-face {
-  font-family: 'RetroHeader';
-  src: url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@900&display=swap');
+@layer base {
+  body {
+    @apply bg-[var(--aged-paper)] text-[var(--ink-black)] font-sans antialiased;
+    background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-masthead uppercase tracking-wider;
+  }
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
+@layer components {
+  .btn-primary {
+    @apply bg-[var(--grafico-red)] text-white font-masthead px-8 py-3 border-2 border-[var(--ink-black)] uppercase text-lg flex items-center gap-2 transition-all duration-200 hover:bg-[var(--grafico-cyan)] hover:-translate-y-1 hover:shadow-[6px_6px_0px_var(--ink-black)] active:translate-y-0 active:shadow-none;
+    min-height: 48px;
+  }
+
+  .card-magazine {
+    @apply bg-white border-4 border-[var(--ink-black)] p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-[12px_12px_0px_var(--ink-black)];
+  }
+
+  .grain-overlay {
+    @apply fixed inset-0 pointer-events-none z-[9999] opacity-[0.05];
+    background: url("https://www.transparenttextures.com/patterns/stardust.png");
+  }
 }
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-  background-color: var(--background);
-  color: var(--foreground);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  line-height: 1.6;
+/* Custom Utilities for Magazine Feel */
+.text-clamp-title {
+  font-size: clamp(3rem, 15vw, 10rem);
+  line-height: 0.85;
 }
 
-h1, h2, h3, h4, .el-grafico-text {
-  font-family: 'Playfair Display', serif;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: -0.02em;
+.bw-to-color {
+  @apply filter grayscale contrast-[1.1] transition-all duration-500;
 }
 
-.vintage-container {
-  background-color: var(--vintage-paper);
-  border: 1px solid var(--border);
-  box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
-  padding: 1.5rem;
-  position: relative;
-}
-
-.vintage-container::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: url("https://www.transparenttextures.com/patterns/paper.png");
-  opacity: 0.1;
-  pointer-events: none;
-}
-
-.btn-retro {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
-  padding: 0.75rem 1.5rem;
-  border: none;
-  font-family: 'Playfair Display', serif;
-  font-weight: bold;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 4px 4px 0px var(--foreground);
-}
-
-.btn-retro:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 6px 6px 0px var(--foreground);
-}
-
-.btn-retro:active {
-  transform: translate(2px, 2px);
-  box-shadow: 0px 0px 0px var(--foreground);
-}
-
-.match-card {
-  border-left: 8px solid var(--primary);
-  padding: 1rem;
-  background: white;
-  margin-bottom: 1rem;
+.group:hover .bw-to-color {
+  @apply filter grayscale-0 contrast-100 scale-105;
 }
