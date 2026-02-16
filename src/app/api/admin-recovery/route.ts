@@ -75,6 +75,7 @@ async function assignAdmin(clerkId: string, groupId: string, name: string) {
         const { error } = await supabase
             .from('GroupMember')
             .insert({
+                id: crypto.randomUUID(),
                 groupId,
                 clerkId,
                 role: 'ADMIN',
