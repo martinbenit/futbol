@@ -1,32 +1,23 @@
 import { NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(req: Request) {
-    const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
     try {
-        const user = await currentUser();
-        if (!user) {
-            return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-        }
+        const { groupId, clerkId } = await req.json();
 
-        const { groupId } = await req.json();
-        if (!groupId) {
-            return NextResponse.json({ error: 'Falta groupId' }, { status: 400 });
+        if (!groupId || !clerkId) {
+            return NextResponse.json({ error: 'Faltan datos (groupId, clerkId)' }, { status: 400 });
         }
 
         // 1. Verify user is ADMIN of this group
-        const { data: member } = await supabase
+        const { data: member, error: memberErr } = await supabase
             .from('GroupMember')
             .select('role')
             .eq('groupId', groupId)
-            .eq('clerkId', user.id)
+            .eq('clerkId', clerkId)
             .single();
 
-        if (!member || member.role !== 'ADMIN') {
+        if (memberErr || !member || member.role !== 'ADMIN') {
             return NextResponse.json({ error: 'No tienes permisos de administrador' }, { status: 403 });
         }
 
@@ -36,7 +27,7 @@ export async function POST(req: Request) {
             .select('id')
             .eq('groupId', groupId);
 
-        const matchIds = (matches || []).map(m => m.id);
+        const matchIds = (matches || []).map((m: any) => m.id);
 
         // 3. Delete all participations for those matches
         if (matchIds.length > 0) {
@@ -46,7 +37,8 @@ export async function POST(req: Request) {
         }
 
         // 4. Delete all matches
-        await supabase.from('Match').delete().eq('groupId', groupId);
+        const { error: matchErr } = await supabase.from('Match').delete().eq('groupId', groupId);
+        if (matchErr) console.error('Error deleting matches:', matchErr);
 
         // 5. Get all players for this group
         const { data: players } = await supabase
@@ -54,7 +46,7 @@ export async function POST(req: Request) {
             .select('id')
             .eq('groupId', groupId);
 
-        const playerIds = (players || []).map(p => p.id);
+        const playerIds = (players || []).map((p: any) => p.id);
 
         // 6. Delete all skill ratings for those players
         if (playerIds.length > 0) {
@@ -64,10 +56,12 @@ export async function POST(req: Request) {
         }
 
         // 7. Delete all players
-        await supabase.from('Player').delete().eq('groupId', groupId);
+        const { error: playerErr } = await supabase.from('Player').delete().eq('groupId', groupId);
+        if (playerErr) console.error('Error deleting players:', playerErr);
 
         // 8. Delete all group members
-        await supabase.from('GroupMember').delete().eq('groupId', groupId);
+        const { error: memberDelErr } = await supabase.from('GroupMember').delete().eq('groupId', groupId);
+        if (memberDelErr) console.error('Error deleting members:', memberDelErr);
 
         // 9. Finally delete the group itself
         const { error: groupError } = await supabase.from('Group').delete().eq('id', groupId);
@@ -81,6 +75,6 @@ export async function POST(req: Request) {
 
     } catch (error: any) {
         console.error('Delete group error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error.message || 'Error interno del servidor' }, { status: 500 });
     }
 }

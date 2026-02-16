@@ -112,7 +112,7 @@ export default function GestionGrupo() {
             const res = await fetch('/api/delete-group', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ groupId: activeGroup.id }),
+                body: JSON.stringify({ groupId: activeGroup.id, clerkId: user.id }),
             });
 
             const data = await res.json();
