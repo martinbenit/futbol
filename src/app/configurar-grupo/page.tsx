@@ -53,7 +53,7 @@ export default function ConfigurarGrupo() {
 
             if (memberError) throw memberError;
 
-            await refreshGroups();
+            await refreshGroups(groupId);
             router.push('/');
         } catch (err: any) {
             console.error('Error creating group:', err);

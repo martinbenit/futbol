@@ -34,7 +34,7 @@ export default function RootLayout({
           <body className="font-sans">
             <div className="grain-overlay"></div>
 
-            <nav className="bg-[var(--ink-black)] text-white py-4 px-3 md:px-6 flex justify-between items-center z-50 relative border-b border-white/10 overflow-hidden">
+            <nav className="bg-[var(--ink-black)] text-white py-4 px-3 md:px-6 flex justify-between items-center z-50 relative border-b border-white/10">
               <div className="flex items-center gap-2 md:gap-6 min-w-0">
                 <Link href="/" className="hover:opacity-80 transition-opacity flex-shrink-0">
                   <Image

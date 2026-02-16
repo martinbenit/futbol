@@ -16,7 +16,7 @@ interface GroupContextType {
     activeGroup: Group | null;
     setActiveGroup: (group: Group) => void;
     loading: boolean;
-    refreshGroups: () => Promise<void>;
+    refreshGroups: (switchToGroupId?: string) => Promise<void>;
 }
 
 const GroupContext = createContext<GroupContextType | undefined>(undefined);
@@ -27,7 +27,7 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     const [activeGroup, setActiveGroup] = useState<Group | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchGroups = async () => {
+    const fetchGroups = async (switchToGroupId?: string) => {
         if (!user) {
             setGroups([]);
             setActiveGroup(null);
@@ -61,6 +61,17 @@ export function GroupProvider({ children }: { children: ReactNode }) {
             }));
 
             setGroups(userGroups);
+
+            // Determine which group to activate
+            if (switchToGroupId) {
+                // Caller explicitly wants this group to be active (e.g. after invite or creation)
+                const target = userGroups.find(g => g.id === switchToGroupId);
+                if (target) {
+                    setActiveGroup(target);
+                    localStorage.setItem('paniqueso_active_group_id', target.id);
+                    return;
+                }
+            }
 
             // Persist active group selection
             const savedGroupId = localStorage.getItem('paniqueso_active_group_id');

@@ -10,7 +10,7 @@ import { Users, Loader2, ShieldCheck, ArrowRight, UserPlus } from 'lucide-react'
 export default function InvitePage() {
     const { code } = useParams();
     const { user, isLoaded: userLoaded } = useUser();
-    const { refreshGroups, groups } = useGroups();
+    const { refreshGroups, groups, setActiveGroup } = useGroups();
     const [group, setGroup] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -61,7 +61,7 @@ export default function InvitePage() {
 
             if (joinError) throw joinError;
 
-            await refreshGroups();
+            await refreshGroups(group.id);
             setSuccess(true);
         } catch (err) {
             console.error('Error joining group:', err);
