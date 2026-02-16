@@ -210,15 +210,20 @@ export default function Dashboard() {
 
     if (!activeGroup) {
         return (
-            <div className="max-w-4xl mx-auto p-12 text-center animate-in fade-in duration-500">
-                <Ghost className="mx-auto mb-6 text-gray-300" size={80} />
-                <h1 className="text-6xl mb-4 uppercase">CAMPO RECIÉN SEMBRADO</h1>
-                <p className="font-serif italic text-xl text-gray-600 mb-12">
-                    &quot;No hay equipos en su archivo. Funde su primer grupo para empezar la historia.&quot;
+            <div className="max-w-lg mx-auto p-6 md:p-12 text-center animate-in fade-in duration-500">
+                <Ghost className="mx-auto mb-6 text-gray-300" size={72} />
+                <h1 className="text-4xl md:text-5xl mb-4 uppercase">CAMPO RECIÉN SEMBRADO</h1>
+                <p className="font-serif italic text-lg text-gray-600 mb-10">
+                    &quot;No hay equipos en su archivo. Funde un grupo o únase con un código de invitación.&quot;
                 </p>
-                <Link href="/configurar-grupo" className="btn-primary !scale-110 !px-12">
-                    FUNDAR MI PRIMER GRUPO <Plus className="ml-2" />
-                </Link>
+                <div className="flex flex-col gap-4">
+                    <Link href="/configurar-grupo" className="btn-primary w-full justify-center">
+                        <Shield className="mr-2" size={20} /> FUNDAR MI EQUIPO
+                    </Link>
+                    <Link href="/invite" className="w-full py-3 border-2 border-black/20 font-masthead text-sm tracking-wider hover:border-black hover:bg-black/5 transition-all flex items-center justify-center gap-2 uppercase">
+                        <ExternalLink size={16} /> TENGO UN CÓDIGO DE INVITACIÓN
+                    </Link>
+                </div>
             </div>
         );
     }
