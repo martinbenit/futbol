@@ -8,7 +8,7 @@ import {
     Zap, Target, ClipboardList, PlusCircle, Info,
     MessageSquare, Shield, Share2, X, UserPlus,
     Swords, RotateCcw, AlertCircle, MessageCircle,
-    Trophy, Clipboard, ArrowRight, ArrowLeft as ArrowLeftIcon, Cpu, Hand
+    Trophy, Clipboard, ArrowRight, ArrowLeft as ArrowLeftIcon, Cpu, Hand, Edit2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useGroups } from '@/context/GroupContext';
@@ -582,8 +582,13 @@ export default function ArmarPartido() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-b-4 border-black flex-1">
                             {/* Team A */}
                             <div className="border-r-0 md:border-r-4 border-b-4 md:border-b-0 border-black bg-white flex flex-col">
-                                <div className="bg-[var(--grafico-red)] text-white p-3 flex gap-2 items-center">
-                                    <input type="text" value={teamAName} onChange={e => setTeamAName(e.target.value)} className="bg-transparent border-b border-white/30 focus:border-white focus:outline-none font-masthead text-xl flex-1 placeholder:text-white/50" placeholder="Nombre Equipo A" />
+                                <div className="bg-[var(--grafico-red)] text-white p-3 flex gap-2 items-center justify-between">
+                                    <div className="relative flex-1 max-w-[70%] group">
+                                        <input type="text" value={teamAName} onChange={e => setTeamAName(e.target.value)} 
+                                            className="w-full bg-white/10 hover:bg-white/20 border-b-2 border-white/50 focus:border-white focus:bg-white/20 focus:outline-none font-masthead text-xl py-1 px-2 rounded-t transition-colors placeholder:text-white/50" 
+                                            placeholder="Nombre Equipo A" />
+                                        <Edit2 size={12} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 pointer-events-none" />
+                                    </div>
                                     <div className="text-right shrink-0">
                                         <div className="text-xs opacity-80">{manualTeamA.length} jug.</div>
                                         <div className="text-sm font-bold">Σ {manualTeamA.reduce((s, p) => s + p.scouting, 0).toFixed(1)}</div>
@@ -608,8 +613,13 @@ export default function ArmarPartido() {
 
                             {/* Team B */}
                             <div className="bg-white flex flex-col">
-                                <div className="bg-[var(--grafico-cyan)] text-white p-3 flex gap-2 items-center">
-                                    <input type="text" value={teamBName} onChange={e => setTeamBName(e.target.value)} className="bg-transparent border-b border-white/30 focus:border-white focus:outline-none font-masthead text-xl flex-1 placeholder:text-white/50" placeholder="Nombre Equipo B" />
+                                <div className="bg-[var(--grafico-cyan)] text-white p-3 flex gap-2 items-center justify-between">
+                                    <div className="relative flex-1 max-w-[70%] group">
+                                        <input type="text" value={teamBName} onChange={e => setTeamBName(e.target.value)} 
+                                            className="w-full bg-white/10 hover:bg-white/20 border-b-2 border-white/50 focus:border-white focus:bg-white/20 focus:outline-none font-masthead text-xl py-1 px-2 rounded-t transition-colors placeholder:text-white/50" 
+                                            placeholder="Nombre Equipo B" />
+                                        <Edit2 size={12} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-50 group-hover:opacity-100 pointer-events-none" />
+                                    </div>
                                     <div className="text-right shrink-0">
                                         <div className="text-xs opacity-80">{manualTeamB.length} jug.</div>
                                         <div className="text-sm font-bold">Σ {manualTeamB.reduce((s, p) => s + p.scouting, 0).toFixed(1)}</div>
