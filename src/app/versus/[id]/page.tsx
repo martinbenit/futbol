@@ -7,7 +7,7 @@ import {
     ArrowLeft, Shield, Zap, Trophy, Star, Copy, CheckCircle2,
     Loader2, MessageSquare, Target, Calendar, MapPin, Clock,
     Award, Share2, ChevronDown, ChevronUp, Save,
-    Minus, Plus, Trash2
+    Minus, Plus, Trash2, Edit2, X
 } from 'lucide-react';
 import { useGroups } from '@/context/GroupContext';
 import { useRouter } from 'next/navigation';
@@ -60,6 +60,12 @@ export default function VersusDetail({ params }: { params: Promise<{ id: string 
     const [match, setMatch] = useState<MatchData | null>(null);
     const [loading, setLoading] = useState(true);
     const [copySuccess, setCopySuccess] = useState(false);
+
+    // Edit names state
+    const [isEditingNames, setIsEditingNames] = useState(false);
+    const [editTeamA, setEditTeamA] = useState('');
+    const [editTeamB, setEditTeamB] = useState('');
+    const [savingNames, setSavingNames] = useState(false);
 
     // Post match state
     const [editMode, setEditMode] = useState(false);
@@ -121,6 +127,31 @@ export default function VersusDetail({ params }: { params: Promise<{ id: string 
 
     const allPlayers = [...teamA.map(p => ({ ...p, team: 'A' })), ...teamB.map(p => ({ ...p, team: 'B' }))];
     const journalistQuote = JOURNALIST_QUOTES[match.id.charCodeAt(0) % JOURNALIST_QUOTES.length];
+
+    const startEditingNames = () => {
+        setEditTeamA(match?.teamA_Name || '');
+        setEditTeamB(match?.teamB_Name || '');
+        setIsEditingNames(true);
+    };
+
+    const handleSaveNames = async () => {
+        if (!match) return;
+        setSavingNames(true);
+        try {
+            await fetch('/api/update-match', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    matchId: match.id,
+                    teamA_Name: editTeamA,
+                    teamB_Name: editTeamB,
+                }),
+            });
+            await fetchMatch();
+            setIsEditingNames(false);
+        } catch (err) { console.error(err); }
+        setSavingNames(false);
+    };
 
     const handleSavePostMatch = async () => {
         setSaving(true);
@@ -204,11 +235,32 @@ export default function VersusDetail({ params }: { params: Promise<{ id: string 
     return (
         <main className="max-w-5xl mx-auto p-4 md:p-8 mb-20 animate-in fade-in duration-300">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-                <Link href="/" className="p-2 hover:bg-black/5 rounded-full transition-colors"><ArrowLeft /></Link>
-                <div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6 relative">
+                <Link href="/" className="p-2 hover:bg-black/5 rounded-full transition-colors self-start sm:self-auto"><ArrowLeft /></Link>
+                <div className="flex-1">
                     <div className="text-[10px] font-bold uppercase text-black/30 tracking-widest">CRÓNICA DEL VERSUS</div>
-                    <h1 className="text-3xl md:text-5xl uppercase tracking-tighter font-masthead">{match.teamA_Name} vs {match.teamB_Name}</h1>
+                    {isEditingNames ? (
+                        <div className="flex flex-col sm:flex-row gap-2 mt-2 items-start sm:items-center">
+                            <input type="text" value={editTeamA} onChange={e => setEditTeamA(e.target.value)} className="border-2 border-black px-2 py-1 font-masthead text-xl sm:text-3xl w-full sm:w-auto focus:outline-none focus:bg-white/50" placeholder="Equipo A" autoFocus />
+                            <span className="font-masthead text-xl sm:text-3xl">VS</span>
+                            <input type="text" value={editTeamB} onChange={e => setEditTeamB(e.target.value)} className="border-2 border-black px-2 py-1 font-masthead text-xl sm:text-3xl w-full sm:w-auto focus:outline-none focus:bg-white/50" placeholder="Equipo B" />
+                            <div className="flex gap-2 ml-0 sm:ml-2 mt-2 sm:mt-0">
+                                <button onClick={handleSaveNames} disabled={savingNames} className="p-2 border-2 border-black bg-green-500 text-white hover:bg-green-600 transition-colors shadow-[2px_2px_0px_black] disabled:opacity-50">
+                                    {savingNames ? <Loader2 size={24} className="animate-spin" /> : <Save size={24} />}
+                                </button>
+                                <button onClick={() => setIsEditingNames(false)} disabled={savingNames} className="p-2 border-2 border-black bg-white hover:bg-gray-100 transition-colors shadow-[2px_2px_0px_black] disabled:opacity-50">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <h1 className="text-3xl md:text-5xl uppercase tracking-tighter font-masthead flex flex-wrap items-center gap-3">
+                            <span>{match.teamA_Name} vs {match.teamB_Name}</span>
+                            <button onClick={startEditingNames} className="text-black/20 hover:text-black transition-colors" title="Editar nombres de equipos">
+                                <Edit2 size={24} />
+                            </button>
+                        </h1>
+                    )}
                 </div>
                 {activeGroup?.role === 'ADMIN' && (
                     <button

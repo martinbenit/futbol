@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 export async function PATCH(request: Request) {
     try {
         const body = await request.json();
-        const { matchId, scoreA, scoreB, chamigo, goleadores, awards, status } = body;
+        const { matchId, scoreA, scoreB, chamigo, goleadores, awards, status, teamA_Name, teamB_Name } = body;
 
         if (!matchId) {
             return NextResponse.json({ error: 'matchId es obligatorio' }, { status: 400 });
@@ -17,6 +17,8 @@ export async function PATCH(request: Request) {
         if (goleadores !== undefined) updates.goleadores = JSON.stringify(goleadores);
         if (awards !== undefined) updates.awards = JSON.stringify(awards);
         if (status !== undefined) updates.status = status;
+        if (teamA_Name !== undefined) updates.teamA_Name = teamA_Name;
+        if (teamB_Name !== undefined) updates.teamB_Name = teamB_Name;
 
         const { error } = await supabase
             .from('Match')
