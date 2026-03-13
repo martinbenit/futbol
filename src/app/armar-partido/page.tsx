@@ -8,7 +8,7 @@ import {
     Zap, Target, ClipboardList, PlusCircle, Info,
     MessageSquare, Shield, Share2, X, UserPlus,
     Swords, RotateCcw, AlertCircle, MessageCircle,
-    Trophy, Clipboard
+    Trophy, Clipboard, ArrowRight, ArrowLeft as ArrowLeftIcon, Cpu, Hand
 } from 'lucide-react';
 import Link from 'next/link';
 import { useGroups } from '@/context/GroupContext';
@@ -125,6 +125,14 @@ export default function ArmarPartido() {
     const [selectedOption, setSelectedOption] = useState<number>(0);
     const [copySuccess, setCopySuccess] = useState(false);
 
+    // ── Manual Builder States ──
+    const [showBuilderSelection, setShowBuilderSelection] = useState(false);
+    const [showManualBuilder, setShowManualBuilder] = useState(false);
+    const [manualTeamA, setManualTeamA] = useState<MatchPlayer[]>([]);
+    const [manualTeamB, setManualTeamB] = useState<MatchPlayer[]>([]);
+    const [teamAName, setTeamAName] = useState('Equipo A');
+    const [teamBName, setTeamBName] = useState('Equipo B');
+
     useEffect(() => {
         if (activeGroup) fetchPlayers();
     }, [activeGroup]);
@@ -191,6 +199,7 @@ export default function ArmarPartido() {
 
     const generateMatch = async () => {
         if (selectedPlayers.length < 2) return;
+        setShowBuilderSelection(false);
         setLoading(true); setError(null);
         try {
             const res = await fetch('/api/generate-match', {
@@ -202,6 +211,57 @@ export default function ArmarPartido() {
             setResults(data); setSelectedOption(0); setShowResultsModal(true);
         } catch (err: any) { setError(err.message || 'Error de conexión'); }
         setLoading(false);
+    };
+
+    const startManualBuilder = () => {
+        setShowBuilderSelection(false);
+        setManualTeamA([]);
+        setManualTeamB([]);
+        setTeamAName('Equipo A');
+        setTeamBName('Equipo B');
+        setShowManualBuilder(true);
+    };
+
+    const handleManualMove = (player: MatchPlayer, target: 'A' | 'B' | 'unassigned') => {
+        setManualTeamA(prev => prev.filter(p => p.id !== player.id));
+        setManualTeamB(prev => prev.filter(p => p.id !== player.id));
+        if (target === 'A') setManualTeamA(prev => [...prev, player]);
+        if (target === 'B') setManualTeamB(prev => [...prev, player]);
+    };
+
+    const saveManualMatch = async () => {
+        if (!activeGroup || manualTeamA.length === 0 || manualTeamB.length === 0) return;
+        setSaving(true);
+        const sumA = manualTeamA.reduce((s, p) => s + p.scouting, 0);
+        const sumB = manualTeamB.reduce((s, p) => s + p.scouting, 0);
+        
+        // Dummy contributions for API compatibility
+        const contributions: Record<string, string> = {};
+        [...manualTeamA, ...manualTeamB].forEach(p => contributions[p.id] = "Armado manualmente");
+
+        try {
+            const res = await fetch('/api/save-match', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    groupId: activeGroup.id,
+                    teamA: manualTeamA, teamB: manualTeamB,
+                    teamAName: teamAName || 'Equipo A', teamBName: teamBName || 'Equipo B',
+                    sumA, sumB,
+                    justification: 'Partido armado manualmente (estilo pan y queso).',
+                    motivation: '¡A dejarlo todo en la cancha!',
+                    contributions,
+                    pizarraA: 'Armado de equipo clásico.',
+                    pizarraB: 'Armado de equipo clásico.',
+                }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                router.push('/');
+            } else {
+                setError(data.error || 'Error guardando el partido manual');
+            }
+        } catch (err: any) { setError(err.message); }
+        setSaving(false);
     };
 
     const regenerate = () => { setResults(null); setShowResultsModal(false); generateMatch(); };
@@ -416,9 +476,9 @@ export default function ArmarPartido() {
                             </div>
                         </div>
 
-                        <button onClick={generateMatch} disabled={selectedPlayers.length < 2 || loading}
+                        <button onClick={() => setShowBuilderSelection(true)} disabled={selectedPlayers.length < 2 || loading}
                             className="w-full py-4 bg-gradient-to-r from-[var(--grafico-red)] to-[var(--grafico-cyan)] text-white font-masthead text-lg tracking-wider hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                            {loading ? <><Loader2 className="animate-spin" size={20} /> GEMINI ESTÁ PENSANDO...</> : <><Sparkles size={20} /> ARMAR PRÓXIMO VERSUS!</>}
+                            <Sparkles size={20} /> CONFIRMAR CONVOCATORIA Y ARMAR VERSUS
                         </button>
 
                         {error && <div className="mt-3 bg-red-500/20 border border-red-400/30 p-2 text-xs text-red-300 flex items-start gap-2"><AlertCircle size={14} className="shrink-0 mt-0.5" />{error}</div>}
@@ -430,6 +490,159 @@ export default function ArmarPartido() {
                     </div>
                 </div>
             </div>
+
+            {/* BUILDER SELECTION MODAL */}
+            {showBuilderSelection && (
+                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowBuilderSelection(false)}>
+                    <div className="bg-white border-4 border-black max-w-lg w-full animate-in zoom-in-95 duration-300" onClick={e => e.stopPropagation()}>
+                        <div className="bg-black text-white p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2 font-masthead tracking-widest text-lg"><Swords size={20} /> ELEGIR MODO DE ARMADO</div>
+                            <button onClick={() => setShowBuilderSelection(false)} className="p-1 hover:bg-white/20 transition-colors"><X size={20} /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <button onClick={generateMatch} disabled={loading} className="w-full text-left p-4 border-4 border-black hover:bg-[var(--ink-black)] hover:text-white transition-colors group">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full border-2 border-current flex items-center justify-center bg-[var(--grafico-cyan)] text-white group-hover:border-white">
+                                        <Cpu size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-masthead text-xl uppercase tracking-wider group-hover:text-[var(--grafico-gold)]">CONSTRUCTOR IA (GEMINI)</h3>
+                                        <p className="font-sans text-xs text-black/60 group-hover:text-white/70 italic mt-1">La inteligencia artificial balancea meticulosamente los equipos usando los 6 skills y tus instrucciones extra.</p>
+                                    </div>
+                                </div>
+                            </button>
+
+                            <button onClick={startManualBuilder} className="w-full text-left p-4 border-4 border-black hover:bg-[var(--grafico-red)] hover:text-white transition-colors group">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full border-2 border-current flex items-center justify-center bg-white text-black group-hover:border-white">
+                                        <Hand size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-masthead text-xl uppercase tracking-wider group-hover:text-[var(--grafico-gold)]">MANUAL (PAN Y QUESO)</h3>
+                                        <p className="font-sans text-xs text-black/60 group-hover:text-white/70 italic mt-1">Vos sos el DT. Repartí los convocados uno por uno al estilo clásico. Mantenemos las stats para que evalúes el balance.</p>
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MANUAL BUILDER MODAL */}
+            {showManualBuilder && (
+                <div className="fixed inset-0 z-[60] bg-black/80 flex items-start justify-center p-2 sm:p-4 animate-in fade-in duration-300 overflow-y-auto">
+                    <div className="bg-[var(--aged-paper)] border-4 border-black max-w-6xl w-full my-4 animate-in zoom-in-95 duration-500 min-h-[80vh] flex flex-col">
+                        <div className="bg-black text-white p-4 sm:p-6 flex items-center justify-between shrink-0">
+                            <div>
+                                <div className="font-accent text-[var(--grafico-gold)] text-xs sm:text-sm uppercase tracking-widest mb-1">ARMADOR MANUAL</div>
+                                <h2 className="font-masthead text-2xl sm:text-4xl tracking-tight">ESTILO PAN Y QUESO</h2>
+                            </div>
+                            <button onClick={() => setShowManualBuilder(false)} className="p-2 hover:bg-white/10 transition-colors"><X size={20} /></button>
+                        </div>
+
+                        {/* Unassigned Pool */}
+                        {(() => {
+                            const unassigned = selectedPlayers.filter(p => !manualTeamA.find(a => a.id === p.id) && !manualTeamB.find(b => b.id === p.id));
+                            return (
+                                <div className="p-4 bg-white border-b-4 border-black shrink-0">
+                                    <h3 className="font-masthead text-sm tracking-widest mb-3 flex items-center gap-2">
+                                        <Users size={16} /> JUGADORES DISPONIBLES ({unassigned.length})
+                                    </h3>
+                                    <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar">
+                                        {unassigned.length === 0 && (
+                                            <div className="text-xs italic text-black/50 py-2">Todos los jugadores han sido asignados.</div>
+                                        )}
+                                        {unassigned.map(p => (
+                                            <div key={p.id} className="border-2 border-black p-2 min-w-[160px] flex flex-col gap-2 shrink-0 bg-gray-50">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 border-2 border-black flex items-center justify-center font-bold text-xs shrink-0 bg-white">
+                                                        {p.photoUrl ? <img src={p.photoUrl} alt="" className="w-full h-full object-cover" /> : p.isGuest ? '🆕' : p.name[0]}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="font-bold text-xs uppercase truncate leading-tight">{p.name}</div>
+                                                        <div className="text-[10px] text-black/50">★ {p.scouting.toFixed(2)} {p.isGoalkeeper ? '🧤' : ''}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1 mt-auto">
+                                                    <button onClick={() => handleManualMove(p, 'A')} className="flex-1 bg-[var(--grafico-red)] text-white text-[10px] font-bold py-1 hover:brightness-110 flex items-center justify-center gap-1">
+                                                        <ArrowLeftIcon size={12} /> A
+                                                    </button>
+                                                    <button onClick={() => handleManualMove(p, 'B')} className="flex-1 bg-[var(--grafico-cyan)] text-white text-[10px] font-bold py-1 hover:brightness-110 flex items-center justify-center gap-1">
+                                                        B <ArrowRight size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {/* Teams */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-b-4 border-black flex-1">
+                            {/* Team A */}
+                            <div className="border-r-0 md:border-r-4 border-b-4 md:border-b-0 border-black bg-white flex flex-col">
+                                <div className="bg-[var(--grafico-red)] text-white p-3 flex gap-2 items-center">
+                                    <input type="text" value={teamAName} onChange={e => setTeamAName(e.target.value)} className="bg-transparent border-b border-white/30 focus:border-white focus:outline-none font-masthead text-xl flex-1 placeholder:text-white/50" placeholder="Nombre Equipo A" />
+                                    <div className="text-right shrink-0">
+                                        <div className="text-xs opacity-80">{manualTeamA.length} jug.</div>
+                                        <div className="text-sm font-bold">Σ {manualTeamA.reduce((s, p) => s + p.scouting, 0).toFixed(1)}</div>
+                                    </div>
+                                </div>
+                                <div className="p-3 divide-y divide-black/5 flex-1 overflow-y-auto max-h-[40vh] md:max-h-full">
+                                    {manualTeamA.length === 0 && <div className="text-center italic text-black/30 text-sm py-8">Vacío</div>}
+                                    {manualTeamA.map(p => (
+                                        <div key={p.id} className="flex items-center justify-between py-2 group">
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleManualMove(p, 'unassigned')} className="text-red-500 hover:text-red-700 p-1 bg-red-50"><X size={14} /></button>
+                                                <div className="font-bold text-sm uppercase">{p.name} {p.isGoalkeeper ? '🧤' : ''}</div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[10px] text-black/40 font-bold">★ {p.scouting.toFixed(1)}</span>
+                                                <button onClick={() => handleManualMove(p, 'B')} className="text-[10px] font-bold bg-[var(--grafico-cyan)] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">A EQUIPO B</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Team B */}
+                            <div className="bg-white flex flex-col">
+                                <div className="bg-[var(--grafico-cyan)] text-white p-3 flex gap-2 items-center">
+                                    <input type="text" value={teamBName} onChange={e => setTeamBName(e.target.value)} className="bg-transparent border-b border-white/30 focus:border-white focus:outline-none font-masthead text-xl flex-1 placeholder:text-white/50" placeholder="Nombre Equipo B" />
+                                    <div className="text-right shrink-0">
+                                        <div className="text-xs opacity-80">{manualTeamB.length} jug.</div>
+                                        <div className="text-sm font-bold">Σ {manualTeamB.reduce((s, p) => s + p.scouting, 0).toFixed(1)}</div>
+                                    </div>
+                                </div>
+                                <div className="p-3 divide-y divide-black/5 flex-1 overflow-y-auto max-h-[40vh] md:max-h-full">
+                                    {manualTeamB.length === 0 && <div className="text-center italic text-black/30 text-sm py-8">Vacío</div>}
+                                    {manualTeamB.map(p => (
+                                        <div key={p.id} className="flex items-center justify-between py-2 group">
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => handleManualMove(p, 'unassigned')} className="text-red-500 hover:text-red-700 p-1 bg-red-50"><X size={14} /></button>
+                                                <div className="font-bold text-sm uppercase">{p.name} {p.isGoalkeeper ? '🧤' : ''}</div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[10px] text-black/40 font-bold">★ {p.scouting.toFixed(1)}</span>
+                                                <button onClick={() => handleManualMove(p, 'A')} className="text-[10px] font-bold bg-[var(--grafico-red)] text-white px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">A EQUIPO A</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Save Action */}
+                        <div className="p-4 bg-white shrink-0">
+                            <button onClick={saveManualMatch} disabled={saving || manualTeamA.length === 0 || manualTeamB.length === 0}
+                                className="w-full py-4 bg-gradient-to-r from-[var(--grafico-gold)] via-yellow-500 to-[var(--grafico-gold)] text-black font-masthead text-lg tracking-wider border-4 border-black hover:brightness-110 transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-[4px_4px_0px_black]">
+                                {saving ? <><Loader2 className="animate-spin" size={20} /> GUARDANDO...</> : <><Trophy size={22} /> CONFIRMAR Y GUARDAR VERSUS MANUAL</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* GUEST MODAL */}
             {showGuestModal && (
