@@ -197,14 +197,26 @@ export default function ArmarPartido() {
     const effectiveTeamSize = teamSize || Math.floor(selectedPlayers.length / 2);
     const subs = Math.max(0, selectedPlayers.length - effectiveTeamSize * 2);
 
-    const generateMatch = async () => {
+    const generateMatch = async (regenSeed?: number, prevOption?: TeamOption) => {
         if (selectedPlayers.length < 2) return;
         setShowBuilderSelection(false);
         setLoading(true); setError(null);
         try {
+            const payload: any = {
+                players: selectedPlayers,
+                teamSize: effectiveTeamSize,
+                extraInstructions: pasteExtra.trim() || undefined,
+            };
+            if (regenSeed) {
+                payload.regenerationSeed = regenSeed;
+            }
+            if (prevOption) {
+                payload.previousTeamAIds = prevOption.teamA.map(p => p.id);
+                payload.previousTeamBIds = prevOption.teamB.map(p => p.id);
+            }
             const res = await fetch('/api/generate-match', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ players: selectedPlayers, teamSize: effectiveTeamSize, extraInstructions: pasteExtra.trim() || undefined }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
             if (!res.ok) { setError(data.error || 'Error generando el partido'); setLoading(false); return; }
@@ -264,7 +276,12 @@ export default function ArmarPartido() {
         setSaving(false);
     };
 
-    const regenerate = () => { setResults(null); setShowResultsModal(false); generateMatch(); };
+    const regenerate = () => {
+        const prevOption = results?.options?.[selectedOption];
+        setResults(null);
+        setShowResultsModal(false);
+        generateMatch(Date.now(), prevOption);
+    };
 
     // ── Save chosen match ──
     const saveMatch = async (optionIdx: number) => {
@@ -393,10 +410,7 @@ export default function ArmarPartido() {
                                     placeholder={`Pegá la lista del grupo. Ejemplo:\n\n1. Claudio\n2. Cali\n3. Ariel (👐)\n4. Dr. Potente\n...\n\nSe detectan automáticamente:\n• Nombres → se matchean a la base de datos\n• Emojis 🧤 👐 → se marcan como arqueros\n• Nombres desconocidos → se agregan como invitados`}
                                     value={rawPaste} onChange={e => setRawPaste(e.target.value)} />
                             </div>
-                            <div className="bg-white border-2 border-black/10">
-                                <div className="px-3 py-1.5 bg-black/5 text-[10px] font-bold uppercase text-black/40 tracking-widest">Instrucciones extra para la IA (opcional)</div>
-                                <textarea className="w-full h-20 p-3 font-sans text-sm focus:outline-none resize-none" placeholder="Ej: Que sea bien competitivo, buscá el mejor arquero valorado para cada equipo..." value={pasteExtra} onChange={e => setPasteExtra(e.target.value)} />
-                            </div>
+                            {/* Extra instructions moved to config panel — visible in both modes */}
                             <button onClick={handleParsePaste} disabled={!rawPaste.trim()} className="w-full py-3 border-4 border-black font-masthead text-sm tracking-wider hover:bg-black hover:text-white transition-colors disabled:opacity-30 flex items-center justify-center gap-2">
                                 <ClipboardList size={16} /> ANALIZAR LISTA
                             </button>
@@ -476,6 +490,14 @@ export default function ArmarPartido() {
                             </div>
                         </div>
 
+                        {/* Extra Instructions — visible in both modes */}
+                        <div className="bg-white/5 border border-white/10 mb-4">
+                            <div className="px-3 py-1.5 bg-white/5 text-[10px] font-bold uppercase text-[var(--grafico-gold)]/70 tracking-widest flex items-center gap-1.5">
+                                <MessageSquare size={10} /> Instrucciones extra para la IA (opcional)
+                            </div>
+                            <textarea className="w-full h-20 p-3 font-sans text-sm focus:outline-none resize-none bg-transparent text-white placeholder:text-white/30" placeholder="Ej: Martín, Sergio y Facundo en un equipo. Que sea competitivo..." value={pasteExtra} onChange={e => setPasteExtra(e.target.value)} />
+                        </div>
+
                         <button onClick={() => setShowBuilderSelection(true)} disabled={selectedPlayers.length < 2 || loading}
                             className="w-full py-4 bg-gradient-to-r from-[var(--grafico-red)] to-[var(--grafico-cyan)] text-white font-masthead text-lg tracking-wider hover:brightness-110 transition-all disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                             <Sparkles size={20} /> CONFIRMAR CONVOCATORIA Y ARMAR VERSUS
@@ -500,7 +522,7 @@ export default function ArmarPartido() {
                             <button onClick={() => setShowBuilderSelection(false)} className="p-1 hover:bg-white/20 transition-colors"><X size={20} /></button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <button onClick={generateMatch} disabled={loading} className="w-full text-left p-4 border-4 border-black hover:bg-[var(--ink-black)] hover:text-white transition-colors group">
+                            <button onClick={() => generateMatch()} disabled={loading} className="w-full text-left p-4 border-4 border-black hover:bg-[var(--ink-black)] hover:text-white transition-colors group">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-full border-2 border-current flex items-center justify-center bg-[var(--grafico-cyan)] text-white group-hover:border-white">
                                         <Cpu size={24} />

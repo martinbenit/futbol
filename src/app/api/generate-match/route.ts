@@ -26,6 +26,9 @@ const TEAM_NAMES_POOL = [
     ['Los Capos de la Pelota', 'Los Picantes del Fondo'],
     ['La Topadora del Oeste', 'Los Atómicos del Sur'],
     ['Los Rústicos FC', 'Los Elegantes del Pasto'],
+    ['La Scaloneta del Barrio', 'Los Bravos del Potrero'],
+    ['Los Vikingos del Pasto', 'Los Titanes del Asfalto'],
+    ['La Dinastía del Gol', 'Los Forjadores del Triunfo'],
 ];
 
 // ── Argentine-flavored nicknames pool for fallback ──
@@ -40,6 +43,18 @@ const FRASES_DEF = ['Impasable en la cueva', 'Orden y marca en el fondo', 'Cierr
 const FRASES_MID = ['Maneja los tiempos del equipo', 'Ida y vuelta constante', 'Pases gol quirúrgicos', 'Distribuye como nadie', 'Rueda de auxilio en el medio'];
 const FRASES_FWD = ['Olfato goleador letal', 'Gol y velocidad', 'Peligro constante en el ataque', 'No perdona frente al arco', 'Definición y gambeta'];
 const FRASES_WILD = ['Aporta en todos lados', 'Apoyo constante para el equipo', 'Entrega y actitud siempre', 'Corazón y compromiso'];
+
+// ── Differentiation strategy labels ──
+const STRATEGY_PAIRS = [
+    ['BALANCE DEFENSIVO: Priorizá que cada equipo tenga solidez atrás. Repartí los mejores defensores y arqueros equilibradamente.', 
+     'BALANCE OFENSIVO: Priorizá que cada equipo tenga capacidad de ataque. Repartí los mejores delanteros y creativos equilibradamente.'],
+    ['SERPENTEO POR RATING: Ordená los jugadores por scouting de mayor a menor y hacé serpenteo (1,4,5,8 vs 2,3,6,7) pero adaptando por posición.', 
+     'REPARTO POR POSICIÓN: Primero agrupá por posición natural (arquero, defensor, mediocampista, delantero) y repartí equitativamente cada grupo.'],
+    ['SOCIEDADES MIXTAS: Mezclá al mejor defensor con el mejor atacante en cada equipo. Buscá que cada equipo sea completo en todas las líneas.', 
+     'POLOS OPUESTOS: Armá un equipo más sólido atrás con creatividad al medio, y otro más vertical con velocidad y ataque. Ambos competitivos.'],
+    ['EQUILIBRIO PURO: Buscá la menor diferencia posible de Σ scouting entre equipos. Priorizá paridad numérica absoluta.', 
+     'DINAMISMO TÁCTICO: Cada equipo con una identidad táctica diferente pero competitiva. Uno más de posesión, otro más de contra.'],
+];
 
 function pick<T>(arr: T[], seed: number): T {
     const idx = Math.floor(Math.abs(seed)) % arr.length;
@@ -67,7 +82,6 @@ function getPositionRole(p: any): 'arquero' | 'defensor' | 'mediocampista' | 'de
 
 function getPersonalizedContribution(p: any, idx: number): string {
     const role = getPositionRole(p);
-    // Use Math.round to ensure integer seed, preventing arr[1.5] => undefined
     const seed = Math.round((p.name?.length || 5) * 7 + idx * 13 + (Number(p.scouting) || 3) * 11);
 
     let apodo: string;
@@ -130,32 +144,26 @@ function buildPizarra(team: any[], teamName: string, otherTeamName: string): str
     let pizarra = `${teamName} se planta con ${analysis.summary}. `;
     pizarra += `Promedio del equipo: ${avg}. `;
 
-    // Arquero — protagonist
     if (gk) {
         pizarra += `En el arco, ${gk.name} garantiza seguridad bajo los tres palos. `;
     }
 
-    // Referencia — top player
     if (topPlayer && topPlayer !== gk) {
         pizarra += `La referencia es ${topPlayer.name} (★${(Number(topPlayer.scouting) || 3).toFixed(1)}), quien marca la diferencia con su jerarquía. `;
     }
 
-    // Defensores — protagonist
     if (defenders.length > 0) {
         pizarra += `En el fondo, ${defenders.map(p => p.name).join(' y ')} aportan marca y solidez. `;
     }
 
-    // Mediocampistas — protagonist
     if (mids.length > 0) {
         pizarra += `En el medio, ${mids.map(p => p.name).join(' y ')} manejan los hilos del juego con creatividad y despliegue. `;
     }
 
-    // Delanteros — protagonist
     if (attackers.length > 0) {
         pizarra += `Arriba, ${attackers.map(p => p.name).join(' y ')} tienen el gol y la gambeta para desequilibrar. `;
     }
 
-    // Polivalentes — protagonist
     if (polivalentes.length > 0) {
         pizarra += `Como cartas todoterreno, ${polivalentes.map(p => p.name).join(' y ')} aportan versatilidad y sacrificio donde haga falta. `;
     }
@@ -165,21 +173,25 @@ function buildPizarra(team: any[], teamName: string, otherTeamName: string): str
     return pizarra;
 }
 
-// ── Smart fallback balancer with 2 options ──
-function fallbackBalance(players: any[], perTeam: number) {
-    function generateOption(seed: number) {
-        const shuffled = [...players];
+// ── Fisher-Yates shuffle ──
+function shuffle<T>(arr: T[], seed: number): T[] {
+    const result = [...arr];
+    let s = Math.abs(seed);
+    for (let i = result.length - 1; i > 0; i--) {
+        s = (s * 1664525 + 1013904223) & 0x7fffffff; // LCG pseudo-random
+        const j = s % (i + 1);
+        [result[i], result[j]] = [result[j], result[i]];
+    }
+    return result;
+}
 
-        // Randomization: swap adjacent pairs with similar scouting
-        for (let i = 0; i < shuffled.length - 1; i++) {
-            const swapChance = ((seed * (i + 7)) % 100) / 100;
-            const scoutDiff = Math.abs((shuffled[i].scouting || 3) - (shuffled[i + 1].scouting || 3));
-            if (swapChance > 0.5 && scoutDiff < 0.6) {
-                [shuffled[i], shuffled[i + 1]] = [shuffled[i + 1], shuffled[i]];
-            }
-        }
+// ── Smart fallback balancer with 2 truly different options ──
+function fallbackBalance(players: any[], perTeam: number, seed?: number) {
+    const now = seed || Date.now();
 
-        const sorted = [...shuffled].sort((a, b) => (b.scouting || 3) - (a.scouting || 3));
+    // Option 1: Greedy serpenteo by rating (classic)
+    function generateGreedyOption(randomSeed: number) {
+        const sorted = [...players].sort((a, b) => (b.scouting || 3) - (a.scouting || 3));
 
         const gks = sorted.filter(p => p.isGoalkeeper || (p.skills?.goalkeeping && p.skills.goalkeeping >= 3.5));
         const nonGks = sorted.filter(p => !gks.includes(p));
@@ -187,22 +199,94 @@ function fallbackBalance(players: any[], perTeam: number) {
         const teamA: any[] = [];
         const teamB: any[] = [];
 
+        // Distribute GKs
         if (gks.length >= 2) {
-            if (seed % 2 === 0) { teamA.push(gks[0]); teamB.push(gks[1]); }
+            if (randomSeed % 2 === 0) { teamA.push(gks[0]); teamB.push(gks[1]); }
             else { teamA.push(gks[1]); teamB.push(gks[0]); }
             nonGks.push(...gks.slice(2));
         } else if (gks.length === 1) {
-            (seed % 2 === 0 ? teamA : teamB).push(gks[0]);
+            (randomSeed % 2 === 0 ? teamA : teamB).push(gks[0]);
         }
 
+        // Serpenteo: 1st to A, 2nd to B, 3rd to B, 4th to A, ...
         const remaining = nonGks.sort((a, b) => (b.scouting || 3) - (a.scouting || 3));
-        if (seed % 3 === 1) {
-            for (let i = 0; i < remaining.length - 1; i += 2) {
-                [remaining[i], remaining[i + 1]] = [remaining[i + 1], remaining[i]];
-            }
+        let toA = true;
+        for (let i = 0; i < remaining.length; i++) {
+            const p = remaining[i];
+            const maxA = perTeam + Math.ceil((players.length - perTeam * 2) / 2);
+            const maxB = perTeam + Math.floor((players.length - perTeam * 2) / 2);
+
+            if (teamA.length >= maxA) { teamB.push(p); continue; }
+            if (teamB.length >= maxB) { teamA.push(p); continue; }
+
+            if (toA) teamA.push(p);
+            else teamB.push(p);
+
+            // Serpenteo pattern: A, B, B, A, A, B, B, A ...
+            if (i % 2 === 1) toA = !toA;
         }
 
-        for (const p of remaining) {
+        return { teamA, teamB };
+    }
+
+    // Option 2: Position-based distribution (alternate by role)
+    function generatePositionOption(randomSeed: number) {
+        const gks = players.filter(p => p.isGoalkeeper || (p.skills?.goalkeeping && p.skills.goalkeeping >= 3.5));
+        const defs = players.filter(p => !gks.includes(p) && getPositionRole(p) === 'defensor')
+            .sort((a, b) => (b.scouting || 3) - (a.scouting || 3));
+        const mids = players.filter(p => !gks.includes(p) && getPositionRole(p) === 'mediocampista')
+            .sort((a, b) => (b.scouting || 3) - (a.scouting || 3));
+        const fwds = players.filter(p => !gks.includes(p) && getPositionRole(p) === 'delantero')
+            .sort((a, b) => (b.scouting || 3) - (a.scouting || 3));
+        const wilds = players.filter(p => !gks.includes(p) && getPositionRole(p) === 'polivalente')
+            .sort((a, b) => (b.scouting || 3) - (a.scouting || 3));
+
+        const teamA: any[] = [];
+        const teamB: any[] = [];
+
+        // Distribute GKs
+        if (gks.length >= 2) {
+            if (randomSeed % 2 === 0) { teamA.push(gks[0]); teamB.push(gks[1]); }
+            else { teamA.push(gks[1]); teamB.push(gks[0]); }
+        } else if (gks.length === 1) {
+            (randomSeed % 2 === 0 ? teamA : teamB).push(gks[0]);
+        }
+
+        // For each position group, alternate between teams
+        for (const group of [defs, mids, fwds, wilds]) {
+            const shuffled = shuffle(group, randomSeed + group.length);
+            shuffled.forEach((p, i) => {
+                const maxA = perTeam + Math.ceil((players.length - perTeam * 2) / 2);
+                const maxB = perTeam + Math.floor((players.length - perTeam * 2) / 2);
+                if (teamA.length >= maxA) { teamB.push(p); return; }
+                if (teamB.length >= maxB) { teamA.push(p); return; }
+
+                if (i % 2 === 0) teamA.push(p);
+                else teamB.push(p);
+            });
+        }
+
+        return { teamA, teamB };
+    }
+
+    // Option 3: Full random shuffle with balance correction
+    function generateShuffledOption(randomSeed: number) {
+        const gks = players.filter(p => p.isGoalkeeper || (p.skills?.goalkeeping && p.skills.goalkeeping >= 3.5));
+        const nonGks = shuffle(players.filter(p => !gks.includes(p)), randomSeed);
+
+        const teamA: any[] = [];
+        const teamB: any[] = [];
+
+        // Distribute GKs
+        if (gks.length >= 2) {
+            if (randomSeed % 2 === 0) { teamA.push(gks[0]); teamB.push(gks[1]); }
+            else { teamA.push(gks[1]); teamB.push(gks[0]); }
+        } else if (gks.length === 1) {
+            (randomSeed % 2 === 0 ? teamA : teamB).push(gks[0]);
+        }
+
+        // Fill by greedy sum-balance from shuffled order
+        for (const p of nonGks) {
             const sumA = teamA.reduce((s, x) => s + (x.scouting || 3), 0);
             const sumB = teamB.reduce((s, x) => s + (x.scouting || 3), 0);
             const maxA = perTeam + Math.ceil((players.length - perTeam * 2) / 2);
@@ -214,58 +298,54 @@ function fallbackBalance(players: any[], perTeam: number) {
             else teamB.push(p);
         }
 
-        const sumA = +(teamA.reduce((s, p) => s + (p.scouting || 3), 0).toFixed(1));
-        const sumB = +(teamB.reduce((s, p) => s + (p.scouting || 3), 0).toFixed(1));
-        const delta = Math.abs(sumA - sumB).toFixed(1);
-
-        // Personalized contributions
-        const contributions: Record<string, string> = {};
-        teamA.forEach((p, i) => { contributions[p.id] = getPersonalizedContribution(p, i + seed); });
-        teamB.forEach((p, i) => { contributions[p.id] = getPersonalizedContribution(p, i + seed + 100); });
-
-        return { teamA, teamB, sumA, sumB, delta, contributions };
+        return { teamA, teamB };
     }
 
-    const now = Date.now();
+    // Generate options using different strategies
+    const strategies = [generateGreedyOption, generatePositionOption, generateShuffledOption];
+    const strat1Idx = now % strategies.length;
+    let strat2Idx = (strat1Idx + 1 + (now % 2)) % strategies.length;
+    if (strat2Idx === strat1Idx) strat2Idx = (strat1Idx + 1) % strategies.length;
+
+    const opt1 = strategies[strat1Idx](now);
+    const opt2 = strategies[strat2Idx](now + 9999);
+
+    // Build enriched outputs
+    function buildOption(result: { teamA: any[]; teamB: any[] }, namePairIdx: number, contributionSeed: number) {
+        const nameIdx = namePairIdx % TEAM_NAMES_POOL.length;
+        const names = TEAM_NAMES_POOL[nameIdx];
+
+        const sumA = +(result.teamA.reduce((s, p) => s + (p.scouting || 3), 0).toFixed(1));
+        const sumB = +(result.teamB.reduce((s, p) => s + (p.scouting || 3), 0).toFixed(1));
+        const delta = Math.abs(sumA - sumB).toFixed(1);
+
+        const contributions: Record<string, string> = {};
+        result.teamA.forEach((p, i) => { contributions[p.id] = getPersonalizedContribution(p, i + contributionSeed); });
+        result.teamB.forEach((p, i) => { contributions[p.id] = getPersonalizedContribution(p, i + contributionSeed + 100); });
+
+        const pizarraA = buildPizarra(result.teamA, names[0], names[1]);
+        const pizarraB = buildPizarra(result.teamB, names[1], names[0]);
+
+        return {
+            teamA: result.teamA,
+            teamB: result.teamB,
+            names: { a: names[0], b: names[1] },
+            sumA, sumB,
+            justification: `Equilibrio calculado por el Motor Paniquesoapp. Σ ${sumA} vs ${sumB} (Δ ${delta}). Equipo A: ${analyzeTeam(result.teamA).summary}. Equipo B: ${analyzeTeam(result.teamB).summary}.`,
+            motivation: `¡Hoy no se guarda nadie! Los dos equipos están parejos — la Σ difiere en apenas ${delta} puntos. El que gane, gana con el corazón. ¡A dejarlo todo en la cancha!`,
+            contributions,
+            pizarraA,
+            pizarraB,
+        };
+    }
+
     const nameIdx1 = now % TEAM_NAMES_POOL.length;
-    const nameIdx2 = (nameIdx1 + 1 + (now % (TEAM_NAMES_POOL.length - 1))) % TEAM_NAMES_POOL.length;
-    const names1 = TEAM_NAMES_POOL[nameIdx1];
-    const names2 = TEAM_NAMES_POOL[nameIdx2];
-
-    const opt1 = generateOption(now);
-    const opt2 = generateOption(now + 7);
-
-    const pizarraA1 = buildPizarra(opt1.teamA, names1[0], names1[1]);
-    const pizarraB1 = buildPizarra(opt1.teamB, names1[1], names1[0]);
-    const pizarraA2 = buildPizarra(opt2.teamA, names2[0], names2[1]);
-    const pizarraB2 = buildPizarra(opt2.teamB, names2[1], names2[0]);
+    const nameIdx2 = (nameIdx1 + 3 + (now % (TEAM_NAMES_POOL.length - 1))) % TEAM_NAMES_POOL.length;
 
     return {
         options: [
-            {
-                teamA: opt1.teamA,
-                teamB: opt1.teamB,
-                names: { a: names1[0], b: names1[1] },
-                sumA: opt1.sumA,
-                sumB: opt1.sumB,
-                justification: `Equilibrio calculado por el Motor Paniquesoapp. Σ ${opt1.sumA} vs ${opt1.sumB} (Δ ${opt1.delta}). Equipo A: ${analyzeTeam(opt1.teamA).summary}. Equipo B: ${analyzeTeam(opt1.teamB).summary}.`,
-                motivation: `¡Hoy no se guarda nadie! Los dos equipos están parejos — la Σ difiere en apenas ${opt1.delta} puntos. El que gane, gana con el corazón. ¡A dejarlo todo en la cancha!`,
-                contributions: opt1.contributions,
-                pizarraA: pizarraA1,
-                pizarraB: pizarraB1,
-            },
-            {
-                teamA: opt2.teamA,
-                teamB: opt2.teamB,
-                names: { a: names2[0], b: names2[1] },
-                sumA: opt2.sumA,
-                sumB: opt2.sumB,
-                justification: `Variante alternativa. Σ ${opt2.sumA} vs ${opt2.sumB} (Δ ${opt2.delta}). Equipo A: ${analyzeTeam(opt2.teamA).summary}. Equipo B: ${analyzeTeam(opt2.teamB).summary}.`,
-                motivation: `¡Acá no hay equipo chico! Los dos tienen gol, marca y cerebro. El que gane, gana con el alma. ¡A la cancha!`,
-                contributions: opt2.contributions,
-                pizarraA: pizarraA2,
-                pizarraB: pizarraB2,
-            },
+            buildOption(opt1, nameIdx1, now),
+            buildOption(opt2, nameIdx2, now + 50),
         ],
     };
 }
@@ -340,7 +420,7 @@ async function callGeminiWithFallback(prompt: string, players: any[]) {
 
 export async function POST(request: Request) {
     try {
-        const { players, teamSize, extraInstructions } = await request.json();
+        const { players, teamSize, extraInstructions, regenerationSeed, previousTeamAIds, previousTeamBIds } = await request.json();
         if (!players || players.length < 2) {
             return NextResponse.json({ error: 'Se necesitan al menos 2 jugadores' }, { status: 400 });
         }
@@ -363,9 +443,34 @@ export async function POST(request: Request) {
             ? `Hay ${subs} jugador(es) que sobra(n), repartilos como suplentes. En contributions agregales "(Suplente)" al final.`
             : '';
 
+        // Pick differentiation strategies for the two options
+        const seed = regenerationSeed || Date.now();
+        const stratPairIdx = seed % STRATEGY_PAIRS.length;
+        const stratPair = STRATEGY_PAIRS[stratPairIdx];
+
+        // Build previous teams exclusion clause
+        const previousTeamsClause = (previousTeamAIds?.length && previousTeamBIds?.length)
+            ? `\nIMPORTANTE — FORMACIÓN PREVIA A EVITAR:
+En la generación anterior, el Equipo A tenía: [${previousTeamAIds.join(', ')}] y Equipo B: [${previousTeamBIds.join(', ')}].
+PROHIBIDO repetir esta misma distribución. Debés mover AL MENOS el 50% de los jugadores de campo (no arqueros) a equipos diferentes.
+Generá formaciones TOTALMENTE NUEVAS y distintas.\n`
+            : '';
+
         const prompt = `
             Sos un DT de barrio argentino, apasionado y con ojo táctico de potrero.
             Tu misión es armar el fulbito más parejo y competitivo de todos.
+
+            ${extraInstructions ? `
+⚠️ INSTRUCCIONES PRIORITARIAS DEL ORGANIZADOR (OBLIGATORIAS):
+${extraInstructions}
+Estas instrucciones DEBEN respetarse por encima de cualquier otra regla de balance. 
+Aplicalas en TODAS las opciones generadas. Si el organizador pide jugadores juntos en un equipo, respetalo SIEMPRE.
+` : ''}
+
+            ${previousTeamsClause}
+
+            SEMILLA DE CREATIVIDAD: ${seed}
+            Usá esta semilla como inspiración para explorar formaciones creativas y distintas.
 
             HABILIDADES DE CADA JUGADOR (1 a 5):
             - defense: muralla, capacidad defensiva
@@ -385,10 +490,21 @@ export async function POST(request: Request) {
             1. Σ scouting de cada equipo lo más pareja posible (diferencia ideal < 0.5, máximo 1.0).
             2. Variedad en cada equipo: defensa, medio y ataque bien repartidos.
             3. isGuest: true usa stats de "similarTo", tratalos como normales.
-            4. isGoalkeeper: true VA AL ARCO obligatoriamente. Repartí un arquero por equipo.
+            4. isGoalkeeper: true VA AL ARCO obligatoriamente. Repartí un arquero por equipo si hay al menos 2.
             5. Cada equipo necesita: seguridad en el arco, solidez defensiva, creatividad en medio, peligro en ataque.
 
-            GENERÁ EXACTAMENTE 2 OPCIONES DE VERSUS DIFERENTES (equipos distintos entre sí).
+            ═══ GENERÁ EXACTAMENTE 2 OPCIONES DE VERSUS ═══
+            
+            🔴 REGLA DE DIFERENCIACIÓN OBLIGATORIA:
+            Las dos opciones DEBEN ser SIGNIFICATIVAMENTE DIFERENTES entre sí.
+            - Al menos el 50% de los jugadores de campo (no arqueros) deben cambiar de equipo entre la Opción 1 y la Opción 2.
+            - NO es válido simplemente intercambiar 1 o 2 jugadores entre opciones.
+            - Cada opción debe seguir un CRITERIO TÁCTICO DISTINTO:
+
+            OPCIÓN 1 — CRITERIO: ${stratPair[0]}
+            OPCIÓN 2 — CRITERIO: ${stratPair[1]}
+
+            ${extraInstructions ? `RECORDATORIO: Las instrucciones del organizador ("${extraInstructions.substring(0, 100)}...") son PRIORITARIAS y deben cumplirse en AMBAS opciones.` : ''}
 
             Para cada opción:
             - NOMBRES: Estilo barrio argentino bien de potrero. Ej: "Los Mismos de Siempre", "La Pesada del Barrio", "El Rejunte Letal"
@@ -418,11 +534,9 @@ export async function POST(request: Request) {
                   "pizarraA": "Párrafo táctico equipo A...",
                   "pizarraB": "Párrafo táctico equipo B..."
                 },
-                { ... segunda opción ... }
+                { ... segunda opción con CRITERIO DISTINTO y AL MENOS 50% de jugadores en equipos diferentes ... }
               ]
             }
-
-            ${extraInstructions ? `\nINSTRUCCIONES EXTRA DEL ORGANIZADOR:\n${extraInstructions}\n` : ''}
 
             NO incluir \`\`\`json ni \`\`\`. Solo el JSON puro.
         `;
@@ -431,7 +545,7 @@ export async function POST(request: Request) {
         if (geminiResult) return NextResponse.json(geminiResult);
 
         console.log('All Gemini models exhausted, using fallback');
-        return NextResponse.json(fallbackBalance(players, perTeam));
+        return NextResponse.json(fallbackBalance(players, perTeam, seed));
     } catch (err: any) {
         console.error('API route error:', err);
         return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 });
